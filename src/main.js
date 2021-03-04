@@ -1,12 +1,17 @@
 import Vue from 'vue'
+import axios from 'axios'
 import App from './App.vue'
 import router from './router'
 import store from './store'
 import vuetify from './plugins/vuetify';
 import 'roboto-fontface/css/roboto/roboto-fontface.css'
 import '@fortawesome/fontawesome-free/css/all.css'
+import VueAutosuggest from "vue-autosuggest";
 
 Vue.config.productionTip = false
+axios.defaults.baseURL = "http://localhost:3000/api/";
+
+Vue.use(VueAutosuggest);
 
 new Vue({
   router,

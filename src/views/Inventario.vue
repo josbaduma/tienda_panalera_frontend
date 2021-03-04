@@ -1,19 +1,22 @@
 <template>
   <v-container>
     <v-row no-gutters>
-      <v-col cols="12">
-        <h1>Inventario</h1>
-      </v-col>
+      <div class="text-center">
+        <v-btn class="mx-2" fab dark color="primary" @click="$router.go(-1)">
+          <v-icon dark> fas fa-arrow-left </v-icon>
+        </v-btn>
+      </div>
       <v-col>
         <v-data-table
           :headers="headers"
-          :items="desserts"
-          sort-by="calories"
+          :items="productos"
+          sort-by="id"
           class="elevation-1"
+          :items-per-page="5"
         >
           <template v-slot:top>
             <v-toolbar flat>
-              <v-toolbar-title>My CRUD</v-toolbar-title>
+              <v-toolbar-title>INVENTARIO</v-toolbar-title>
               <v-divider class="mx-4" inset vertical></v-divider>
               <v-spacer></v-spacer>
               <v-dialog v-model="dialog" max-width="500px">
@@ -25,7 +28,7 @@
                     v-bind="attrs"
                     v-on="on"
                   >
-                    New Item
+                    NUEVO PRODUCTO
                   </v-btn>
                 </template>
                 <v-card>
@@ -38,32 +41,37 @@
                       <v-row>
                         <v-col cols="12" sm="6" md="4">
                           <v-text-field
+                            v-model="editedItem.barcode"
+                            label="Código de Barras"
+                          ></v-text-field>
+                        </v-col>
+                        <v-col cols="12" sm="6" md="4">
+                          <v-text-field
                             v-model="editedItem.name"
-                            label="Dessert name"
+                            label="Nombre"
+                          ></v-text-field>
+                        </v-col>
+                        <v-col cols="12" sm="6" md="4">
+                          <v-select
+                            v-model="editedItem.category"
+                            :items="categorias"
+                            item-text="name"
+                            item-value="id"
+                            label="Categoria"
+                            persistent-hint
+                            single-line
+                          ></v-select>
+                        </v-col>
+                        <v-col cols="12" sm="6" md="4">
+                          <v-text-field
+                            v-model="editedItem.price"
+                            label="Precio"
                           ></v-text-field>
                         </v-col>
                         <v-col cols="12" sm="6" md="4">
                           <v-text-field
-                            v-model="editedItem.calories"
-                            label="Calories"
-                          ></v-text-field>
-                        </v-col>
-                        <v-col cols="12" sm="6" md="4">
-                          <v-text-field
-                            v-model="editedItem.fat"
-                            label="Fat (g)"
-                          ></v-text-field>
-                        </v-col>
-                        <v-col cols="12" sm="6" md="4">
-                          <v-text-field
-                            v-model="editedItem.carbs"
-                            label="Carbs (g)"
-                          ></v-text-field>
-                        </v-col>
-                        <v-col cols="12" sm="6" md="4">
-                          <v-text-field
-                            v-model="editedItem.protein"
-                            label="Protein (g)"
+                            v-model="editedItem.quantity"
+                            label="Cantidad"
                           ></v-text-field>
                         </v-col>
                       </v-row>
@@ -73,10 +81,10 @@
                   <v-card-actions>
                     <v-spacer></v-spacer>
                     <v-btn color="blue darken-1" text @click="close">
-                      Cancel
+                      Cancelar
                     </v-btn>
                     <v-btn color="blue darken-1" text @click="save">
-                      Save
+                      Guardar
                     </v-btn>
                   </v-card-actions>
                 </v-card>
@@ -84,12 +92,12 @@
               <v-dialog v-model="dialogDelete" max-width="500px">
                 <v-card>
                   <v-card-title class="headline"
-                    >Are you sure you want to delete this item?</v-card-title
+                    >¿Seguro que desea eliminar el producto?</v-card-title
                   >
                   <v-card-actions>
                     <v-spacer></v-spacer>
                     <v-btn color="blue darken-1" text @click="closeDelete"
-                      >Cancel</v-btn
+                      >Cancelar</v-btn
                     >
                     <v-btn color="blue darken-1" text @click="deleteItemConfirm"
                       >OK</v-btn
@@ -102,12 +110,12 @@
           </template>
           <template v-slot:[`item.actions`]="{ item }">
             <v-icon small class="mr-2" @click="editItem(item)">
-              mdi-pencil
+              fas fa-edit
             </v-icon>
-            <v-icon small @click="deleteItem(item)"> mdi-delete </v-icon>
+            <v-icon small @click="deleteItem(item)"> fas fa-trash </v-icon>
           </template>
           <template v-slot:no-data>
-            <v-btn color="primary" @click="initialize"> Reset </v-btn>
+            <v-btn color="primary" @click="getAllProductos"> Reset </v-btn>
           </template>
         </v-data-table>
       </v-col>
@@ -116,45 +124,46 @@
 </template>
 
 <script>
+import { mapActions, mapState } from "vuex";
+import Swal from "sweetalert2";
+
 export default {
   name: "Inventario",
   data: () => ({
     dialog: false,
     dialogDelete: false,
     headers: [
-      {
-        text: "Dessert (100g serving)",
-        align: "start",
-        sortable: false,
-        value: "name",
-      },
-      { text: "Calories", value: "calories" },
-      { text: "Fat (g)", value: "fat" },
-      { text: "Carbs (g)", value: "carbs" },
-      { text: "Protein (g)", value: "protein" },
-      { text: "Actions", value: "actions", sortable: false },
+      { text: "Id", value: "id" },
+      { text: "Código de Barras", value: "barcode" },
+      { text: "Nombre", value: "name" },
+      { text: "Categoria", value: "Categorium.name" },
+      { text: "Precio", value: "price" },
+      { text: "Cantidad", value: "quantity" },
+      { text: "Actions", value: "actions" },
     ],
-    desserts: [],
     editedIndex: -1,
     editedItem: {
+      id: 0,
+      barcode: 0,
       name: "",
-      calories: 0,
-      fat: 0,
-      carbs: 0,
-      protein: 0,
+      category: 0,
+      price: 0,
+      quantity: 0,
     },
     defaultItem: {
+      id: 0,
+      barcode: 0,
       name: "",
-      calories: 0,
-      fat: 0,
-      carbs: 0,
-      protein: 0,
+      category: 0,
+      price: 0,
+      quantity: 0,
     },
   }),
 
   computed: {
+    ...mapState(["productos", "categorias", "error"]),
     formTitle() {
-      return this.editedIndex === -1 ? "New Item" : "Edit Item";
+      return this.editedIndex === -1 ? "Nuevo Item" : "Editar Item";
     },
   },
 
@@ -168,99 +177,33 @@ export default {
   },
 
   created() {
-    this.initialize();
+    this.getAllProductos();
+    this.getAllCategorias();
   },
 
   methods: {
-    initialize() {
-      this.desserts = [
-        {
-          name: "Frozen Yogurt",
-          calories: 159,
-          fat: 6.0,
-          carbs: 24,
-          protein: 4.0,
-        },
-        {
-          name: "Ice cream sandwich",
-          calories: 237,
-          fat: 9.0,
-          carbs: 37,
-          protein: 4.3,
-        },
-        {
-          name: "Eclair",
-          calories: 262,
-          fat: 16.0,
-          carbs: 23,
-          protein: 6.0,
-        },
-        {
-          name: "Cupcake",
-          calories: 305,
-          fat: 3.7,
-          carbs: 67,
-          protein: 4.3,
-        },
-        {
-          name: "Gingerbread",
-          calories: 356,
-          fat: 16.0,
-          carbs: 49,
-          protein: 3.9,
-        },
-        {
-          name: "Jelly bean",
-          calories: 375,
-          fat: 0.0,
-          carbs: 94,
-          protein: 0.0,
-        },
-        {
-          name: "Lollipop",
-          calories: 392,
-          fat: 0.2,
-          carbs: 98,
-          protein: 0,
-        },
-        {
-          name: "Honeycomb",
-          calories: 408,
-          fat: 3.2,
-          carbs: 87,
-          protein: 6.5,
-        },
-        {
-          name: "Donut",
-          calories: 452,
-          fat: 25.0,
-          carbs: 51,
-          protein: 4.9,
-        },
-        {
-          name: "KitKat",
-          calories: 518,
-          fat: 26.0,
-          carbs: 65,
-          protein: 7,
-        },
-      ];
-    },
-
+    ...mapActions([
+      "getAllCategorias",
+      "getAllProductos",
+      "createProducto",
+      "editProducto",
+      "deleteProducto",
+    ]),
     editItem(item) {
-      this.editedIndex = this.desserts.indexOf(item);
+      this.editedIndex = this.productos.indexOf(item);
       this.editedItem = Object.assign({}, item);
       this.dialog = true;
     },
 
     deleteItem(item) {
-      this.editedIndex = this.desserts.indexOf(item);
+      this.editedIndex = this.productos.indexOf(item);
       this.editedItem = Object.assign({}, item);
       this.dialogDelete = true;
     },
 
     deleteItemConfirm() {
-      this.desserts.splice(this.editedIndex, 1);
+      this.deleteProducto(this.editedIndex + 1);
+      this.productos.splice(this.editedIndex, 1);
       this.closeDelete();
     },
 
@@ -280,13 +223,35 @@ export default {
       });
     },
 
-    save() {
-      if (this.editedIndex > -1) {
-        Object.assign(this.desserts[this.editedIndex], this.editedItem);
-      } else {
-        this.desserts.push(this.editedItem);
+    async save() {
+      try {
+        if (this.editedIndex > -1) {
+          Object.assign(this.productos[this.editedIndex], this.editedItem);
+          this.editProducto(this.editedItem);
+        } else {
+          const res = await this.createProducto(this.editedItem);
+          console.log(res.data);
+
+          if (res.data.producto) {
+            this.productos.push(this.editedItem);
+            Swal.fire({
+              icon: "success",
+              title: "Producto Registrado",
+              showConfirmButton: false,
+              timer: 5000,
+            });
+          }
+        }
+        this.close();
+      } catch (error) {
+        Swal.fire({
+          icon: "error",
+          title: "Producto no registrado",
+          showConfirmButton: false,
+          timer: 5000,
+        });
+        this.close();
       }
-      this.close();
     },
   },
 };
